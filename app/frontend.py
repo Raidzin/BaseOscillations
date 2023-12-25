@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from nicegui import ui
-from sympy import pretty
 
 from app.oscillations import resolve_dynamic_system
 
@@ -25,9 +24,10 @@ def init(fastapi_app: FastAPI) -> None:
                 points.clear()
                 try:
                     resp = resolve_dynamic_system(f1.value, f2.value)
+                except NotImplementedError:
+                    ui.notify('Невозможно вычислить', type='negative')
                 except Exception as error:
                     ui.notify('Ошибка вычислений', type='negative')
-                    raise error
                 with points:
                     for i, p in enumerate(resp[0]):
                         point(i, p, resp[1][i])
@@ -36,11 +36,11 @@ def init(fastapi_app: FastAPI) -> None:
                 f1 = ui.input(
                     label='Первое уравнение',
                     value='x ** 3 + x * (y ** 2) - 10 * y',
-                ).classes('full-width')
+                ).props('clearable').classes('full-width')
                 f2 = ui.input(
                     label='Второе уравнение',
                     value='x + (x ** 2) * y + (y ** 3) - 7 * y',
-                ).classes('full-width')
+                ).props('clearable').classes('full-width')
                 ui.button('Рассчитать', on_click=get_result)
                 points = ui.row().classes('full-width')
 

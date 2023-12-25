@@ -1,4 +1,4 @@
-from sympy import solve, symbols, sympify, Eq, solveset, re, im
+from sympy import *
 
 
 def solve_symbolic(
