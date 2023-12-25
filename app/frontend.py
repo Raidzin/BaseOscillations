@@ -9,8 +9,18 @@ def init(fastapi_app: FastAPI) -> None:
     @ui.page('/site/m/dynamic_system')
     def dynamic_system():
         ui.query('body').style('background-color: #eeeeff;')
+        ui.add_head_html('<link href="https://unpkg.com/eva-icons@1.1.3/style/eva-icons.css" rel="stylesheet">')
         ui.page_title('Решение динамических систем')
-        with ui.row().classes('full-width justify-center'), ui.card().classes('w-full max-w-screen-md min-h-[95dvh]'):
+
+        with ui.header().classes('justify-center'):
+            with ui.row().classes('full-width max-w-screen-md justify-between'):
+                ui.label('Решение динамических систем').classes('text-h6')
+
+        with ui.footer().classes('justify-center'):
+            with ui.row().classes('justify-center full-width max-w-screen-md'):
+                ui.label('made by Alexey Goncharuk')
+
+        with ui.row().classes('full-width justify-center'), ui.card().classes('w-full max-w-screen-md min-h-[80dvh]'):
             def get_result():
                 points.clear()
                 try:
