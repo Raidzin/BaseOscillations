@@ -1,5 +1,7 @@
+from asyncio import to_thread
+
 from fastapi import FastAPI
-from nicegui import ui
+from nicegui import ui, run
 
 from app.oscillations import resolve_dynamic_system
 
@@ -20,14 +22,19 @@ def init(fastapi_app: FastAPI) -> None:
                 ui.label('made by Alexey Goncharuk')
 
         with ui.row().classes('full-width justify-center'), ui.card().classes('w-full max-w-screen-md min-h-[80dvh]'):
-            def get_result():
+            async def get_result():
                 points.clear()
+                b.props('loading')
                 try:
-                    resp = resolve_dynamic_system(f1.value, f2.value)
-                except NotImplementedError:
+                    resp = await to_thread(resolve_dynamic_system, f1.value, f2.value)
+                except NotImplementedError as error:
                     ui.notify('Невозможно вычислить', type='negative')
+                    raise error
                 except Exception as error:
                     ui.notify('Ошибка вычислений', type='negative')
+                    raise error
+                finally:
+                    b.props(remove='loading')
                 with points:
                     for i, p in enumerate(resp[0]):
                         point(i, p, resp[1][i])
@@ -41,7 +48,7 @@ def init(fastapi_app: FastAPI) -> None:
                     label='Второе уравнение',
                     value='x + (x ** 2) * y + (y ** 3) - 7 * y',
                 ).props('clearable').classes('full-width')
-                ui.button('Рассчитать', on_click=get_result)
+                b = ui.button('Рассчитать', on_click=get_result)
                 points = ui.row().classes('full-width')
 
     ui.run_with(fastapi_app, storage_secret='secret123')
