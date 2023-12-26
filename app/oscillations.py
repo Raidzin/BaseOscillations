@@ -1,67 +1,92 @@
-from sympy import *
+from enum import StrEnum
+
+from sympy import Eq, symbols, sympify, solve, solveset, im, re
 
 
-def solve_symbolic(
-        first_equation: Eq,
-        second_equation: Eq,
-):
-    x, y = symbols('x, y')
-    sol = solve([first_equation, second_equation], [x, y])
-    return sol
-
-
-def determinate_state(
-        first_equation,
-        second_equation,
-        point
-):
-    x, y = symbols('x, y')
-    a = first_equation.diff(x)
-    b = first_equation.diff(y)
-    c = second_equation.diff(x)
-    d = second_equation.diff(y)
-    subs = {symbols(key): item for key, item in point.items()}
-    a0 = a.evalf(subs=subs)
-    b0 = b.evalf(subs=subs)
-    c0 = c.evalf(subs=subs)
-    d0 = d.evalf(subs=subs)
-    lmbd = symbols('lmbd')
-    h_eq = lmbd ** 2 - lmbd * (a0 + d0) + a0 * d0 - b0 * c0
-    lmbd1, lmbd2 = solveset(h_eq, lmbd)
-    if im(lmbd1) == 0:
-        if re(lmbd1) > 0 and re(lmbd2) > 0:
-            return 'Неустойчивый узел'
-        elif re(lmbd1) < 0 and re(lmbd2) < 0:
-            return 'Устойчивый узел'
-        else:
-            return 'Седло'
-    else:
-        if re(lmbd1) > 0 and re(lmbd2) > 0:
-            return 'Неустойчивый фокус'
-        elif re(lmbd1) < 0 and re(lmbd2) < 0:
-            return 'Устойчивый фокус'
-        elif re(lmbd1) == 0 and re(lmbd2) == 0:
-            return 'Седло'
-        else:
-            return 'Неизвестный'
+class EquilibriumState(StrEnum):
+    unstable_knot = 'Неустойчивый узел'
+    stable_knot = 'Устойчивый узел'
+    saddle = 'Седло'
+    unstable_focus = 'Неустойчивый фокус'
+    stable_focus = 'Устойчивый фокус'
+    center = 'Центр'
+    unknown = 'Неизвестный'
 
 
 def resolve_dynamic_system(
-        first_equation: str,
-        second_equation: str,
+        first_function_text: str,
+        second_function_text: str,
 ):
-    f1 = sympify(first_equation)
-    f2 = sympify(second_equation)
-    eq1 = Eq(f1, rhs=0)
-    eq2 = Eq(f2, rhs=0)
-    points = solve_symbolic(eq1, eq2)
-    res = [determinate_state(f1, f2, {'x': x, 'y': y}) for x, y in points]
-    return points, res
+    first_function = sympify(first_function_text)
+    second_function = sympify(second_function_text)
+    equilibrium_points = find_equilibrium_points(
+        first_function=first_function,
+        second_function=second_function,
+    )
+    derived_functions = find_derived_functions(
+        first_function=first_function,
+        second_function=second_function,
+    )
+    all_characteristic_roots = [
+        find_characteristic_equation_roots(derived_functions, {'x': x, 'y': y})
+        for x, y in equilibrium_points
+    ]
+    equilibrium_states = [
+        determinate_equilibrium_state(characteristic_root)
+        for characteristic_root in all_characteristic_roots
+    ]
+    return [
+        (point, state)
+        for point, state in zip(equilibrium_points, equilibrium_states)
+    ]
 
 
-if __name__ == '__main__':
-    f1 = 'x ** 3 + x * (y ** 2) - 10 * y'
-    f2 = 'x + (x ** 2) * y + (y ** 3) - 7 * y'
-    points, states = resolve_dynamic_system(f1, f2)
-    print(points)
-    print(states)
+def find_equilibrium_points(first_function, second_function):
+    x, y = symbols('x, y')
+    points = solve(
+        [Eq(first_function, rhs=0), Eq(second_function, rhs=0)],
+        [x, y]
+    )
+    return [(x, y) for x, y in points if im(x) == 0 and im(y) == 0]
+
+
+def find_derived_functions(
+        first_function,
+        second_function,
+):
+    x, y = symbols('x, y')
+    a = first_function.diff(x)
+    b = first_function.diff(y)
+    c = second_function.diff(x)
+    d = second_function.diff(y)
+    return a, b, c, d
+
+
+def find_characteristic_equation_roots(derived_functions, point):
+    subs = {symbols(key): item for key, item in point.items()}
+    a, b, c, d = [diff.evalf(subs=subs) for diff in derived_functions]
+    lmbd = symbols('lmbd')
+    characteristic_equation = lmbd ** 2 - lmbd * (a + d) + a * d - b * c
+    return solveset(characteristic_equation, lmbd)
+
+
+def determinate_equilibrium_state(characteristic_roots):
+    lmbd1, lmbd2 = characteristic_roots
+    match (im(lmbd1), im(lmbd2), re(lmbd1), re(lmbd2)):
+        case (0, 0, re1, re2) if re1 > 0 and re2 > 0:
+            return EquilibriumState.unstable_knot
+        case (0, 0, re1, re2) if re1 < 0 and re2 < 0:
+            return EquilibriumState.stable_knot
+        case (0, 0, _, _):
+            return EquilibriumState.saddle
+        case (_, _, re1, re2) if re1 > 0 and re2 > 0:
+            return EquilibriumState.unstable_focus
+        case (_, _, re1, re2) if re1 < 0 and re2 < 0:
+            return EquilibriumState.stable_focus
+        case (_, _, 0, 0):
+            return EquilibriumState.center
+        case _:
+            return EquilibriumState.unknown
+
+
+

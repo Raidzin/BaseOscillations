@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 
+from app.oscillations import EquilibriumState
+
 
 class DynamicSystem(BaseModel):
     first_equation: str = Field(
@@ -12,12 +14,7 @@ class DynamicSystem(BaseModel):
     )
 
 
-class EquationSolution(BaseModel):
-    solutions: list[tuple[str, str]] = Field(
-        default=...,
-        examples=[[('1', '2'), ('-2', '0')]]
-    )
-
-    @field_validator('solutions', mode='before')
-    def validate_solutions(cls, value):
-        return [(str(x), str(y)) for x, y in value]
+class EquilibriumPoint(BaseModel):
+    x: str
+    y: str
+    equilibrium_state: EquilibriumState
